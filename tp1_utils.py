@@ -35,7 +35,8 @@ def images_to_pic(f_name,images,width = 20):
             row += 1
             
     imsave(f_name,picture)
-    
+
+
 def compare_masks(f_name,masks1,masks2,width = 20):
     """
     Creates a single image file comparing the two sets of masks
@@ -54,7 +55,8 @@ def compare_masks(f_name,masks1,masks2,width = 20):
         img[np.logical_and(m1[:,:,0]>0.5,m2[:,:,0]>0.5),2] = 1
         imgs.append(img)
     images_to_pic(f_name,imgs,width)
-    
+
+
 def overlay_masks(f_name,images,masks,width = 20):
     """
     Creates a single image file overlaying the masks and the images
