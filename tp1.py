@@ -9,6 +9,7 @@ from tp1_utils import load_data
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, Dropout
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 
@@ -61,13 +62,22 @@ def build_multiclass_model():
 
 
 def main():
+	EPOCHS = 10
+	BATCH_SIZE = 32
+	INIT_LR = 0.01
+	MOMENTUM = 0.9
+
 	train_x, test_x, _, _, train_classes, _, test_classes, _ = load_data().values()
+
+	train_x, val_x, train_y, val_y = train_test_split(train_x, train_classes, test_size=500)
 
 	model = build_multiclass_model()
 
-	model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+	opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR/EPOCHS)
 
-	history = model.fit(train_x, train_classes, validation_data=(test_x, test_classes), batch_size=128, epochs=100)
+	model.compile(opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
+	history = model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
 	final_training_data = [(l, history.history[l][-1]) for l in history.history]
 
 	print(final_training_data)
