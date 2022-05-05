@@ -90,36 +90,26 @@ def build_segmentation_model():
 def build_multilabel_model():
     inputs = Input(shape=(64, 64, 3), name='inputs')
 
-    layer = Conv2D(32, (3, 3), padding="same")(inputs)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(32, (3, 3), padding="same", activation="relu")(inputs)
     layer = BatchNormalization()(layer)
-    layer = Conv2D(32, (3, 3), padding="same")(layer)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(32, (3, 3), padding="same", activation="relu")(layer)
     layer = BatchNormalization()(layer)
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
-    layer = Conv2D(128, (3, 3), padding="same")(layer)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(128, (3, 3), padding="same", activation="relu")(layer)
     layer = BatchNormalization()(layer)
-    layer = Conv2D(128, (3, 3), padding="same")(layer)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(128, (3, 3), padding="same", activation="relu")(layer)
     layer = BatchNormalization()(layer)
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
-    layer = Conv2D(128, (3, 3), padding="same")(layer)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(128, (3, 3), padding="same", activation="relu")(layer)
     layer = BatchNormalization()(layer)
-    layer = Conv2D(128, (3, 3), padding="same")(layer)
-    layer = Activation("relu")(layer)
+    layer = Conv2D(128, (3, 3), padding="same", activation="relu")(layer)
     layer = BatchNormalization()(layer)
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
 
     features = Flatten(name='features')(layer)
-    # layer = Dense(512)(features)
-    # layer = Activation("relu")(layer)
-    layer = Dense(256)(features)
-    layer = Activation("relu")(layer)
+    layer = Dense(256, activation="relu")(features)
     layer = Dropout(0.3)(layer)
-    layer = Dense(10)(layer)
-    layer = Activation("sigmoid")(layer)
+    layer = Dense(10, activation="sigmoid")(layer)
 
     return Model(inputs=inputs, outputs=layer)
 
@@ -235,9 +225,9 @@ def main():
 
     # multiclass_model(train_x, train_classes, test_x, test_classes)
 
-    # multilabel_model(train_x, train_labels, test_x, test_labels)
+    multilabel_model(train_x, train_labels, test_x, test_labels)
 
-    segmentation_model(train_x, train_masks, test_x, test_masks)
+    # segmentation_model(train_x, train_masks, test_x, test_masks)
 
 
 if __name__ == '__main__':
