@@ -6,11 +6,11 @@ Aprendizagem Profunda, TP1
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, \
+    Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD
-from tensorflow.python.keras.layers import Conv2DTranspose, UpSampling2D, SeparableConv2D
-from tensorflow.keras import layers
 
 from tp1_utils import load_data, overlay_masks
 
@@ -194,16 +194,12 @@ def multilabel_model(train_x, train_labels, test_x, test_labels):
 def segmentation_model(train_x, train_masks, test_x, test_masks):
     train_X, val_x, train_y, val_y = train_test_split(train_x, train_masks, test_size=500)
 
-    EPOCHS = 15
+    EPOCHS = 100
     BATCH_SIZE = 32
-    INIT_LR = 0.01
-    MOMENTUM = 0.9
 
     model = build_segmentation_model()
 
-    opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
-
-    model.compile(opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     history = model.fit(train_X, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
 
@@ -225,9 +221,9 @@ def main():
 
     # multiclass_model(train_x, train_classes, test_x, test_classes)
 
-    multilabel_model(train_x, train_labels, test_x, test_labels)
+    # multilabel_model(train_x, train_labels, test_x, test_labels)
 
-    # segmentation_model(train_x, train_masks, test_x, test_masks)
+    segmentation_model(train_x, train_masks, test_x, test_masks)
 
 
 if __name__ == '__main__':
