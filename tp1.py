@@ -111,8 +111,8 @@ def multiclass_model(train_x, train_classes, test_x, test_classes):
     print(final_training_data)
 
     loss, acc = model.evaluate(test_x, test_classes)
-    print('Multilabel test loss:', loss)
-    print('Multilabel test accuracy:', acc)
+    print('Multiclass test loss:', loss)
+    print('Multiclass test accuracy:', acc)
 
     plot(history)
 
