@@ -7,8 +7,10 @@ Aprendizagem Profunda, TP1
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, \
-    Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D
+    Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD
 
@@ -216,14 +218,63 @@ def segmentation_model(train_x, train_masks, test_x, test_masks):
     plot(history)
 
 
+def build_multiclass_transfer_model():
+    convolutional_base = MobileNetV2(include_top=False, input_shape=(64, 64, 3), weights='imagenet')
+    convolutional_base.trainable = False
+
+    inputs = Input(shape=(64, 64, 3), name='inputs')
+    layer = convolutional_base(inputs, training=False)
+
+    # layer = GlobalAveragePooling2D()(layer)
+
+    layer = Flatten(name='features')(layer)
+    layer = Dense(512, activation="relu")(layer)
+    layer = Dropout(0.5)(layer)
+    layer = Dense(10, activation="softmax")(layer)
+
+    return Model(inputs=inputs, outputs=layer)
+
+
+def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
+
+    train_X = preprocess_input(train_x * 255)
+    train_X, val_x, train_y, val_y = train_test_split(train_X, train_classes, test_size=500)
+
+    X_test = preprocess_input(test_x * 255)
+
+    EPOCHS = 100
+    BATCH_SIZE = 32
+    INIT_LR = 0.01
+    MOMENTUM = 0.9
+
+    model = build_multiclass_transfer_model()
+
+    opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
+
+    model.compile(optimizer="sgd", loss='categorical_crossentropy', metrics=['accuracy'])
+
+    history = model.fit(train_X, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
+
+    final_training_data = [(l, history.history[l][-1]) for l in history.history]
+    print(final_training_data)
+
+    loss, acc = model.evaluate(X_test, test_classes)
+    print('Multiclass transfer test loss:', loss)
+    print('Multiclass transfer test accuracy:', acc)
+
+    plot(history)
+
+
 def main():
     train_x, test_x, train_masks, test_masks, train_classes, train_labels, test_classes, test_labels = load_data().values()
 
     # multiclass_model(train_x, train_classes, test_x, test_classes)
 
+    transfer_multiclass_model(train_x, train_classes, test_x, test_classes)
+
     # multilabel_model(train_x, train_labels, test_x, test_labels)
 
-    segmentation_model(train_x, train_masks, test_x, test_masks)
+    # segmentation_model(train_x, train_masks, test_x, test_masks)
 
 
 if __name__ == '__main__':
