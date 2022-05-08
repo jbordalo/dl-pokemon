@@ -113,38 +113,30 @@ def build_convnet(output_activation):
     return Model(inputs=inputs, outputs=layer)
 
 
+def fit_evaluate(model, model_name, train_x, train_y, test_x, test_y, batch_size, epochs):
+    X_train, X_val, y_train, y_val = train_test_split(train_x, train_y, test_size=500)
+
+    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), batch_size=batch_size, epochs=epochs)
+
+    metrics = model.evaluate(test_x, test_y, verbose=0, return_dict=True)
+
+    show_metrics(model_name, history, metrics)
+
+
 def multiclass_model(train_x, train_classes, test_x, test_classes):
-    X_train, X_val, y_train, y_val = train_test_split(train_x, train_classes, test_size=500)
-
-    EPOCHS = 20
-    BATCH_SIZE = 32
-
     model = build_convnet(output_activation="softmax")
 
     model.compile(optimizer='nadam', loss='categorical_crossentropy', metrics=["accuracy"])
 
-    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), batch_size=BATCH_SIZE, epochs=EPOCHS)
-
-    metrics = model.evaluate(test_x, test_classes, verbose=0, return_dict=True)
-
-    show_metrics("Multiclass", history, metrics)
+    fit_evaluate(model, "Multiclass", train_x, train_classes, test_x, test_classes, batch_size=32, epochs=20)
 
 
 def multilabel_model(train_x, train_labels, test_x, test_labels):
-    X_train, X_val, y_train, y_val = train_test_split(train_x, train_labels, test_size=500)
-
-    EPOCHS = 100
-    BATCH_SIZE = 32
-
     model = build_convnet(output_activation="sigmoid")
 
     model.compile(optimizer='nadam', loss='binary_crossentropy', metrics=multilabel_metrics())
 
-    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), batch_size=BATCH_SIZE, epochs=EPOCHS)
-
-    metrics = model.evaluate(test_x, test_labels, verbose=0, return_dict=True)
-
-    show_metrics("Multilabel", history, metrics)
+    fit_evaluate(model, "Multilabel", train_x, train_labels, test_x, test_labels, batch_size=32, epochs=20)
 
 
 def multilabel_metrics(thr=0.5):
@@ -160,20 +152,11 @@ def multilabel_metrics(thr=0.5):
 
 
 def segmentation_model(train_x, train_masks, test_x, test_masks):
-    X_train, X_val, y_train, y_val = train_test_split(train_x, train_masks, test_size=500)
-
-    EPOCHS = 100
-    BATCH_SIZE = 32
-
     model = build_segmentation_model()
 
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), batch_size=BATCH_SIZE, epochs=EPOCHS)
-
-    metrics = model.evaluate(test_x, test_masks)
-
-    show_metrics("Semantic Segmentation", history, metrics)
+    fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=100)
 
     predicts = model.predict(test_x)
     overlay_masks('test_overlay.png', test_x, predicts)
