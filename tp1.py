@@ -6,30 +6,29 @@ Aprendizagem Profunda, TP1
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import layers
-from tensorflow.keras import metrics
+from tensorflow.keras import layers, metrics
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, \
+from tensorflow.keras.layers import Input, Activation, Flatten, Dense, Conv2D, BatchNormalization, MaxPooling2D, \
     Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
 
 from tp1_utils import load_data, overlay_masks
 
 
-def show_metrics(history, model, metrics):
-    print(f"{model}:")
+def show_metrics(model_name, history, metrics):
+    print(f"{model_name}:")
     for metric_label in metrics:
         print(f"{metric_label.capitalize()} {metrics[metric_label]:.5f}")
-    plot(history, model)
+    plot(history, model_name)
 
 
-def plot(hist, model):
+def plot(hist, model_name):
     plt.figure(figsize=(12, 8))
-    for k in hist.history:
-        plt.plot(hist.history[k], label=k, linewidth=2.0)
+    for metric in hist.history:
+        plt.plot(hist.history[metric], label=metric, linewidth=2.0)
 
-    plt.title('Training and Validation Metrics: ' + model)
+    plt.title('Training and Validation Metrics: ' + model_name)
     plt.xlabel('Epoch #')
     plt.ylabel('Metric')
     plt.legend()
@@ -93,7 +92,7 @@ def build_segmentation_model():
     return Model(inputs, outputs)
 
 
-def build_multilabel_model():
+def build_convnet(output_activation):
     inputs = Input(shape=(64, 64, 3), name='inputs')
 
     layer = Conv2D(32, (3, 3), padding="same", activation="relu")(inputs)
@@ -109,29 +108,7 @@ def build_multilabel_model():
     # layer = Flatten(name='features')(layer)
     # layer = Dense(256, activation="relu")(layer)
     # layer = Dropout(0.3)(layer)
-    layer = Dense(10, activation="sigmoid")(layer)
-
-    return Model(inputs=inputs, outputs=layer)
-
-
-def build_multiclass_model():
-    inputs = Input(shape=(64, 64, 3), name='inputs')
-
-    layer = Conv2D(32, (3, 3), padding="same", activation="relu")(inputs)
-    layer = BatchNormalization()(layer)
-    layer = Conv2D(32, (3, 3), padding="same", activation="relu")(layer)
-    layer = BatchNormalization()(layer)
-    layer = MaxPooling2D(pool_size=(2, 2))(layer)
-
-    layer = Conv2D(64, (3, 3), padding="same", activation="relu")(layer)
-    layer = BatchNormalization()(layer)
-    layer = MaxPooling2D(pool_size=(2, 2))(layer)
-
-    # layer = Flatten(name='features')(layer)
-    # layer = Dense(256, activation="relu")(layer)
-    # layer = Dropout(0.5)(layer)
-    layer = GlobalAveragePooling2D()(layer)
-    layer = Dense(10, activation="softmax")(layer)
+    layer = Dense(10, activation=output_activation)(layer)
 
     return Model(inputs=inputs, outputs=layer)
 
@@ -142,7 +119,7 @@ def multiclass_model(train_x, train_classes, test_x, test_classes):
     EPOCHS = 20
     BATCH_SIZE = 32
 
-    model = build_multiclass_model()
+    model = build_convnet(output_activation="softmax")
 
     model.compile(optimizer='nadam', loss='categorical_crossentropy', metrics=["accuracy"])
 
@@ -150,7 +127,7 @@ def multiclass_model(train_x, train_classes, test_x, test_classes):
 
     metrics = model.evaluate(test_x, test_classes, verbose=0, return_dict=True)
 
-    show_metrics(history, model, metrics)
+    show_metrics("Multiclass", history, metrics)
 
 
 def multilabel_model(train_x, train_labels, test_x, test_labels):
@@ -159,15 +136,15 @@ def multilabel_model(train_x, train_labels, test_x, test_labels):
     EPOCHS = 100
     BATCH_SIZE = 32
 
-    model = build_multilabel_model()
+    model = build_convnet(output_activation="sigmoid")
 
     model.compile(optimizer='nadam', loss='binary_crossentropy', metrics=multilabel_metrics())
 
     history = model.fit(X_train, y_train, validation_data=(X_val, y_val), batch_size=BATCH_SIZE, epochs=EPOCHS)
 
-    metrics = model.evaluate(test_x, test_labels)
+    metrics = model.evaluate(test_x, test_labels, verbose=0, return_dict=True)
 
-    show_metrics(history, "Multilabel", metrics)
+    show_metrics("Multilabel", history, metrics)
 
 
 def multilabel_metrics(thr=0.5):
@@ -196,7 +173,7 @@ def segmentation_model(train_x, train_masks, test_x, test_masks):
 
     metrics = model.evaluate(test_x, test_masks)
 
-    show_metrics(history, "Semantic Segmentation", metrics)
+    show_metrics("Semantic Segmentation", history, metrics)
 
     predicts = model.predict(test_x)
     overlay_masks('test_overlay.png', test_x, predicts)
@@ -237,7 +214,7 @@ def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
 
     metrics = model.evaluate(X_test, test_classes)
 
-    show_metrics(history, "Transfer Multiclass", metrics)
+    show_metrics("Transfer Multiclass", history, metrics)
 
 
 def main():
