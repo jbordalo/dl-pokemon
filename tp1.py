@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Input, Activation, Flatten, Dense, Conv2D, B
     Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
 
-from tp1_utils import load_data, overlay_masks
+from tp1_utils import load_data, overlay_masks, compare_masks
 
 
 def show_metrics(model_name, history, metrics):
@@ -87,7 +87,7 @@ def build_segmentation_model():
         previous_block_activation = x  # Set aside next residual
 
     # Pixelwise classification layer
-    outputs = Conv2D(2, 3, activation="softmax", padding="same")(x)
+    outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(x)
 
     return Model(inputs, outputs)
 
@@ -106,8 +106,8 @@ def build_convnet(output_activation):
 
     layer = GlobalAveragePooling2D()(layer)
     # layer = Flatten(name='features')(layer)
-    # layer = Dense(256, activation="relu")(layer)
-    # layer = Dropout(0.3)(layer)
+    # layer = Dense(128, activation="relu")(layer)
+    # layer = Dropout(0.5)(layer)
     layer = Dense(10, activation=output_activation)(layer)
 
     return Model(inputs=inputs, outputs=layer)
@@ -128,7 +128,7 @@ def multiclass_model(train_x, train_classes, test_x, test_classes):
 
     model.compile(optimizer='nadam', loss='categorical_crossentropy', metrics=["accuracy"])
 
-    fit_evaluate(model, "Multiclass", train_x, train_classes, test_x, test_classes, batch_size=32, epochs=20)
+    fit_evaluate(model, "Multiclass", train_x, train_classes, test_x, test_classes, batch_size=32, epochs=40)
 
 
 def multilabel_model(train_x, train_labels, test_x, test_labels):
@@ -136,7 +136,7 @@ def multilabel_model(train_x, train_labels, test_x, test_labels):
 
     model.compile(optimizer='nadam', loss='binary_crossentropy', metrics=multilabel_metrics())
 
-    fit_evaluate(model, "Multilabel", train_x, train_labels, test_x, test_labels, batch_size=32, epochs=20)
+    fit_evaluate(model, "Multilabel", train_x, train_labels, test_x, test_labels, batch_size=32, epochs=40)
 
 
 def multilabel_metrics(thr=0.5):
@@ -154,12 +154,13 @@ def multilabel_metrics(thr=0.5):
 def segmentation_model(train_x, train_masks, test_x, test_masks):
     model = build_segmentation_model()
 
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=100)
+    fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=200)
 
     predicts = model.predict(test_x)
     overlay_masks('test_overlay.png', test_x, predicts)
+    compare_masks('test_compare.png', test_masks, predicts)
 
 
 def build_multiclass_transfer_model():
