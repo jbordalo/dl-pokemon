@@ -5,8 +5,13 @@ Aprendizagem Profunda, TP1
 """
 
 import matplotlib.pyplot as plt
+import os.path
+
+import numpy as np
 from sklearn.model_selection import train_test_split
+from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import metrics
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.layers import Input, Conv2D, Activation, BatchNormalization, MaxPooling2D, Flatten, Dense, \
@@ -108,9 +113,10 @@ def build_multilabel_model():
     layer = BatchNormalization()(layer)
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
 
-    features = Flatten(name='features')(layer)
-    layer = Dense(256, activation="relu")(features)
-    layer = Dropout(0.3)(layer)
+    layer = GlobalAveragePooling2D()(layer)
+    # features = Flatten(name='features')(layer)
+    # layer = Dense(256, activation="relu")(features)
+    # layer = Dropout(0.3)(layer)
     layer = Dense(10, activation="sigmoid")(layer)
 
     return Model(inputs=inputs, outputs=layer)
@@ -133,9 +139,10 @@ def build_multiclass_model():
     layer = BatchNormalization()(layer)
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
 
-    features = Flatten(name='features')(layer)
-    layer = Dense(256, activation="relu")(features)
-    layer = Dropout(0.5)(layer)
+    # features = Flatten(name='features')(layer)
+    # layer = Dense(256, activation="relu")(features)
+    # layer = Dropout(0.5)(layer)
+    layer = GlobalAveragePooling2D()(layer)
     layer = Dense(10, activation="softmax")(layer)
 
     return Model(inputs=inputs, outputs=layer)
@@ -153,7 +160,7 @@ def multiclass_model(train_x, train_classes, test_x, test_classes):
 
     opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
 
-    model.compile(opt, loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='nadam', loss='categorical_crossentropy', metrics=[metrics.BinaryAccuracy(threshold=0.45)])
 
     history = model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
 
@@ -176,21 +183,75 @@ def multilabel_model(train_x, train_labels, test_x, test_labels):
     MOMENTUM = 0.9
 
     model = build_multilabel_model()
+    model.summary()
 
-    opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
+    # opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
 
-    model.compile(opt, loss='binary_crossentropy', metrics=['accuracy'])
+    thr = 0.5
+    model.compile(optimizer='nadam', loss='binary_crossentropy', metrics=multilabel_metrics(thr))
 
     history = model.fit(train_X, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
 
     final_training_data = [(l, history.history[l][-1]) for l in history.history]
     print(final_training_data)
 
-    loss, acc = model.evaluate(test_x, test_labels)
-    print('Multilabel test loss:', loss)
-    print('Multilabel test accuracy:', acc)
+    model.evaluate(test_x, test_labels)
+
+    predictions = model.predict(test_x)
+    for thr in np.linspace(0.02, 0.6, 30):
+        for mimi in multilabel_metrics(thr):
+            mimi.update_state(test_labels, predictions)
+            print(mimi.result().numpy())
+            mimi.reset_states()
 
     plot(history)
+
+
+def multilabel_facebook_model(train_x, train_labels, test_x, test_labels):
+    train_x, val_x, train_labels, val_labels = train_test_split(train_x, train_labels, test_size=500)
+
+    train_labels = train_labels / train_labels.sum(axis=1, keepdims=True)
+    test_labels = test_labels / test_labels.sum(axis=1, keepdims=True)
+
+    EPOCHS = 100
+    BATCH_SIZE = 32
+    INIT_LR = 0.01
+    MOMENTUM = 0.9
+
+    model = build_multiclass_model()
+    model.summary()
+
+    # opt = SGD(learning_rate=INIT_LR, momentum=MOMENTUM, nesterov=True, decay=INIT_LR / EPOCHS)
+
+    thr = 0.5
+    model.compile(optimizer='nadam', loss='categorical_crossentropy', metrics=multilabel_metrics(thr))
+
+    history = model.fit(train_x, train_labels, validation_data=(val_x, val_labels), batch_size=BATCH_SIZE, epochs=EPOCHS)
+
+    final_training_data = [(l, history.history[l][-1]) for l in history.history]
+    print(final_training_data)
+
+    predictions = model.predict(test_x)
+    model.evaluate(test_x, test_labels)
+    for thr in np.linspace(0.02, 0.6, 30):
+        for mimi in multilabel_metrics(thr):
+            mimi.update_state(test_labels, predictions)
+            print(mimi.result().numpy())
+            mimi.reset_states()
+
+    plot(history)
+
+
+def multilabel_metrics(thr):
+    return [
+        metrics.BinaryAccuracy(name="accuracy", threshold=thr),
+        metrics.Precision(thresholds=thr),
+        metrics.Recall(thresholds=thr),
+        metrics.TruePositives(thresholds=thr),
+        metrics.TrueNegatives(thresholds=thr),
+        metrics.FalsePositives(thresholds=thr),
+        metrics.FalseNegatives(thresholds=thr)
+    ]
 
 
 def segmentation_model(train_x, train_masks, test_x, test_masks):
