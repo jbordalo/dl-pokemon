@@ -6,9 +6,8 @@ Aprendizagem Profunda, TP1
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras import layers, metrics
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.layers import Input, Activation, Flatten, Dense, Conv2D, BatchNormalization, MaxPooling2D, \
     Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
@@ -105,9 +104,6 @@ def build_convnet(output_activation):
     layer = MaxPooling2D(pool_size=(2, 2))(layer)
 
     layer = GlobalAveragePooling2D()(layer)
-    # layer = Flatten(name='features')(layer)
-    # layer = Dense(128, activation="relu")(layer)
-    # layer = Dropout(0.5)(layer)
     layer = Dense(10, activation=output_activation)(layer)
 
     return Model(inputs=inputs, outputs=layer)
@@ -154,7 +150,7 @@ def multilabel_metrics(thr=0.5):
 def segmentation_model(train_x, train_masks, test_x, test_masks):
     model = build_segmentation_model()
 
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=multilabel_metrics())
 
     fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=200)
 
@@ -163,54 +159,47 @@ def segmentation_model(train_x, train_masks, test_x, test_masks):
     compare_masks('test_compare.png', test_masks, predicts)
 
 
-def build_multiclass_transfer_model():
-    convolutional_base = MobileNetV2(include_top=False, input_shape=(64, 64, 3), weights='imagenet')
+def build_transfer_model(output_activation):
+    inputs = Input(shape=(64, 64, 3), name='inputs')
+    convolutional_base = EfficientNetB0(include_top=False, weights='imagenet')
+    layer = convolutional_base(inputs, training=False)
     convolutional_base.trainable = False
 
-    inputs = Input(shape=(64, 64, 3), name='inputs')
-    layer = convolutional_base(inputs, training=False)
+    layer = GlobalAveragePooling2D()(layer)
 
-    # layer = GlobalAveragePooling2D()(layer)
-
-    layer = Dropout(0.5)(layer)
-    layer = Flatten(name='features')(layer)
-    layer = Dense(64, activation="relu")(layer)
-    layer = Dropout(0.2)(layer)
-    layer = Dense(10, activation="softmax")(layer)
+    layer = Dense(10, activation=output_activation)(layer)
 
     return Model(inputs=inputs, outputs=layer)
 
 
+def transfer_multilabel_model(train_x, train_labels, test_x, test_labels):
+    model = build_transfer_model("sigmoid")
+
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    fit_evaluate(model, "Multilabel", train_x*255, train_labels, test_x*255, test_labels, batch_size=32, epochs=100)
+
+
 def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
-    train_X = preprocess_input(train_x * 255)
-    train_X, val_x, train_y, val_y = train_test_split(train_X, train_classes, test_size=500)
-
-    X_test = preprocess_input(test_x * 255)
-
-    EPOCHS = 100
-    BATCH_SIZE = 32
-
-    model = build_multiclass_transfer_model()
+    model = build_transfer_model("softmax")
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    history = model.fit(train_X, train_y, validation_data=(val_x, val_y), batch_size=BATCH_SIZE, epochs=EPOCHS)
-
-    metrics = model.evaluate(X_test, test_classes)
-
-    show_metrics("Transfer Multiclass", history, metrics)
+    fit_evaluate(model, "Multiclass", train_x*255, train_classes, test_x*255, test_classes, batch_size=32, epochs=100)
 
 
 def main():
     train_x, test_x, train_masks, test_masks, train_classes, train_labels, test_classes, test_labels = load_data().values()
 
-    multiclass_model(train_x, train_classes, test_x, test_classes)
+    # multiclass_model(train_x, train_classes, test_x, test_classes)
 
     # transfer_multiclass_model(train_x, train_classes, test_x, test_classes)
 
     # multilabel_model(train_x, train_labels, test_x, test_labels)
 
-    # segmentation_model(train_x, train_masks, test_x, test_masks)
+    # transfer_multilabel_model(train_x, train_labels, test_x, test_labels)
+
+    segmentation_model(train_x, train_masks, test_x, test_masks)
 
 
 if __name__ == '__main__':
