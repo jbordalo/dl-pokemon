@@ -179,13 +179,13 @@ def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
 def main():
     train_x, test_x, train_masks, test_masks, train_classes, train_labels, test_classes, test_labels = load_data().values()
 
-    # multiclass_model(train_x, train_classes, test_x, test_classes)
+    multiclass_model(train_x, train_classes, test_x, test_classes)
 
-    # transfer_multiclass_model(train_x, train_classes, test_x, test_classes)
+    transfer_multiclass_model(train_x, train_classes, test_x, test_classes)
 
-    # multilabel_model(train_x, train_labels, test_x, test_labels)
+    multilabel_model(train_x, train_labels, test_x, test_labels)
 
-    # transfer_multilabel_model(train_x, train_labels, test_x, test_labels)
+    transfer_multilabel_model(train_x, train_labels, test_x, test_labels)
 
     segmentation_model(train_x, train_masks, test_x, test_masks)
 

@@ -73,5 +73,10 @@ Segmentation_Xception.png
 
 Q6: (Optional) Discuss the impact on training and overfitting for the two classification problems when using available networks pretrained on ImageNet (e.g. EfficientNetB0, MobileNetV2 or others). Explain how you used these networks and discuss the effect they had relative to your models.
 Q6: (Opcional) Discuta o impacto no treino e sobreajustamento nos dois problemas de classificação se usar redes pré-treinadas no dataset ImageNet (e.g. EfficientNetB0, MobileNetV2 or others). Explique como usou estas redes e discuta o efeito que tiveram nos seus modelos.
-R6: For the transfer learning problem we imported the EfficientNetB0, MobileNetV2 and VGG16 networks without their classifiers. We then froze the layers so as to not have them be trained alongside our classifier. This imported network performs the feature extraction so all we needed to do was train a classifier. We did not manage to obtain proper results. We tried having a dense layer and having only a Global Average Pooling layer but we never stopped overfitting and achieved at best around 55 accuracy on the validation set.
+R6: For the transfer learning problem we imported the EfficientNetB0, MobileNetV2 and VGG16 networks without their classifiers. We then froze the layers so as to not have them be trained alongside our classifier. This imported network performs the feature extraction so all we needed to do was train a classifier. We did not manage to obtain proper results. We tried having a dense layer and having only a Global Average Pooling layer but we never stopped overfitting and achieved at best around 55 accuracy on the validation set. We present results only for the EfficientNetB0, although we tried different networks and with different architectures. Our Multiclass model with transfer learning:
 
+Multiclass_Transfer.png
+
+. Our Multilabel model with transfer learning:
+
+Multilabel_Transfer.png
