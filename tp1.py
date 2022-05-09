@@ -35,33 +35,41 @@ def plot(hist, model_name):
     plt.show()
 
 
-def double_conv_block(x, n_filters):
-    x = Conv2D(n_filters, 3, padding="same", activation="relu")(x)
-    x = Conv2D(n_filters, 3, padding="same", activation="relu")(x)
-    return x
+def double_conv_block(layer, n_filters):
+    layer = Conv2D(n_filters, 3, padding="same", activation="relu")(layer)
+    layer = Conv2D(n_filters, 3, padding="same", activation="relu")(layer)
+    return layer
 
 
-def downsample_block(x, n_filters):
-    f = double_conv_block(x, n_filters)
-    p = MaxPooling2D(2)(f)
-    return f, p
+def downsample_block(layer, n_filters):
+    feature = double_conv_block(layer, n_filters)
+    pooling = MaxPooling2D(2)(feature)
+    return feature, pooling
 
 
-def upsample_block(x, conv_features, n_filters):
-    x = Conv2DTranspose(n_filters, 3, 2, padding="same")(x)
-    x = Concatenate([x, conv_features])
-    x = double_conv_block(x, n_filters)
-    return x
+def upsample_block(layer, conv_features, n_filters):
+    layer = Conv2DTranspose(n_filters, 3, 2, padding="same")(layer)
+    layer = Concatenate([layer, conv_features])
+    layer = double_conv_block(layer, n_filters)
+    return layer
 
 
-def build_segmentation_model():
+def build_segmentation_model(filters=None):
+    if filters is None:
+        filters = [32]
+
     inputs = Input(shape=(64, 64, 3))
 
-    features, layer = downsample_block(inputs, 32)
+    layer = inputs
+    features = []
+    for i, n_filters in enumerate(filters):
+        feature, layer = downsample_block(layer, n_filters)
+        features[i] = feature
 
-    layer = double_conv_block(layer, 64)
+    layer = double_conv_block(layer, 2 * filters[-1])
 
-    layer = upsample_block(layer, features, 32)
+    for i, n_filters in reversed(list(enumerate(filters))):
+        layer = upsample_block(layer, features[i], n_filters)
 
     outputs = Conv2D(1, 1, padding="same", activation="sigmoid")(layer)
 
