@@ -19,30 +19,64 @@ PERGUNTAS/QUESTIONS:
 
 Q1: Explain the architecture of your best model for the multiclass classification problem, including a description and justification of the output activation and loss functions. Also justify your choice of layers and activation functions for the hidden layers.
 Q1; Explique a arquitectura do seu melhor modelo para o problema de classificação de multi-classe, incluindo uma descrição e justificação das funções de activação à saída da rede e função de custo. Justifique também a sua escolha de camadas e de funções de activação para as camadas escondidas.
-R1:
+R1: Our multiclass model starts with a convolutional base which consists of 2 stacked convolutional layers with 32 3x3 filters, followed by max pooling. After these, we have another convolutional layer with 64 3x3 filters following by max pooling. The idea of stacking convolutional layers with smaller filters is to reduce the number of parameters whilst keeping the size of the receptive field. After each convolution we have a Batch Normalization layer in order to speed up training and optimize the backpropagation algorithm. We used pooling after the convolutions to reduce the size of feature maps. After the convolutional base, we have a Global Average Pooling layer, followed by the output layer of 10 neurons with softmax activation. For the loss function, we used categorical cross-entropy, which is a good measure of how distinguishable two discrete probability distributions are from each other. This is useful since we're using softmax as the activation function of the output layer and softmax outputs a probability distribution of the data belonging to each class. For the activation of the hidden layers we used ReLU because it's efficient to compute and doesn't saturate.
 
 
 Q2: Discuss and explain how you selected the best model for the multiclass classifcation problem, showing the relevant plots, comparing the different models you tried and evaluating the results you obtained.
 Q2: Discuta e explique como seleccionou o melhor modelo para o problema de classificação multi-classe, mostrando os gráficos relevantes, comparando os diferentes modelos que experimentou e avaliando os resultados obtidos.
-R2:
+R2: We originally used a densely connected base consisting of a layer of 128 neurons followed by a dropout layer with a probability of 0.5 and a final output layer of 10 neurons with softmax activation.
+
+Multiclass_Dense.png
+
+However, we found that by using a Global Average Pooling layer after the Convolutional Base, followed by the output layer of 10 neurons, we not only got better results but also got them faster, with less training.
+
+Multiclass_GAP.png
+
+Originally we used a deeper base network to get acceptable results (at least overfit) and began pruning it from there and managed to remove some of the convolutional layers. We found that it would be possible to remove the last layer currently present in our convolutional base maintaining similar results but at the expense of a much longer training time. For this reason, we decided it was best to keep this layer. We also tested different architectures with a dense layer and got better results than the ones presented but they required much more complicated convolutional bases and long training. We showed these two plots to illustrate the difference between the dense layer and the Global Average Pooling approaches.
 
 
 Q3: For the multilabel classification problem, explain how you adpated your previous model, what experiments you did to optimize the architecture and discuss your results. Do not forget to explain your choice of activation and loss functions and why this model differs from the previous one.
 Q3: Para o problema de classificação com múltiplas etiquetas, explique como adaptou o modelo anterior, que experiências fez para optimizar a arquitectura e discuta os resultados. Não se esqueça de explicar a escolha de funções de activação e custo e porque é que este modelo difere do anterior.
-R3:
+R3: For the multilabel network we changed the activation of the output neurons to sigmoid, which gives you the probability of the correspondent label matching the example input. Given this we used binary cross-entropy as the loss function to minimize the difference between the predicted and true labels. As with the multiclass network, we started with a densely connected base following the convolutional base.
+
+ Multilabel_Dense.png
+
+ We tried optimizing this without much success. We changed to Global Average Pooling after the convolutional base and achieved better metrics.
+
+ Multilabel_GAP.png
+
+ With this approach we were able to use almost the same network only changing the activation function of the output layer.
 
 
 Q4: Explain the architecture of your best model for the semantic segmentation problem, including a description and justification of the output activation and loss functions. Also justify your choice of layers and activation functions for the hidden layers.
 Q4: Explique a arquitectura do seu melhor modelo para o problema de segmentação semântica, incluindo uma descrição e justificação das funções de activação à saída da rede e função de custo. Justifique também a sua escolha de camadas e de funções de activação para as camadas escondidas.
-R4:
+R4: For our segmentation model we followed the architecture of U-Net. The network consists of a contracting path followed by an expansive path with skip connections linking matching blocks. The contracting path consists of a typical ConvNet pattern. The expansive path consists of an inverted ConvNet pattern with "deconvolution" layers instead of pooling layers, whose outputs are concatenated with the features from the corresponding skip connections followed by two convolution layers. We also used padding in order to generate a full resolution segmentation map. For the activation of the hidden layers we used ReLU because it's efficient to compute and doesn't saturate. For the output activation we used a sigmoid function as our segmentation map only differentiates between two classes which meant that the adequate loss function was binary cross-entropy.
 
 
 Q5: Discuss and explain how you selected the best model for the semantic segmentation problem, showing the relevant plots, comparing the different models you tried and evaluating the results you obtained. Use the auxiliary functions provided to show the correspondence between your predicted segmentation masks and the masks provided in the test set.
 Q5: Discuta e explique como seleccionou o melhor modelo para o problema de segmentação semântica, mostrando os gráficos relevantes, comparando os diferentes modelos que experimentou e avaliando os resultados obtidos. Use as funções auxiliares fornecidas para mostrar a correspondência entre as máscaras de segmentação previstas e as máscaras no conjunto de teste.
-R5:
+R5: We started with a model that resembled the original U-Net, but due to memory constraints and long training times we ended up reducing the number of internal layers and achieving better results for a given training time. With this model, we found that even though we had reasonable accuracy after just a few epochs, if we let it run for longer, we could achieve significantly better masks. This was confirmed by not only the accuracy value but also by empirically analyzing the masks using the provided auxiliary functions.
+As shown we got very positive results with our approach:
+
+Segmentation_UNet.png
+
+Compare_Masks_UNet.png
+
+Overlay_Masks_UNet.png
+
+Given that long training leads into diminishing returns, it would be reasonable use early stopping to reduce training time.
+
+We also attempted to use another architecture using Xception modules in a UNet-like layout but it only achieved similar results with much longer training times:
+
+Segmentation_Xception.png
 
 
 Q6: (Optional) Discuss the impact on training and overfitting for the two classification problems when using available networks pretrained on ImageNet (e.g. EfficientNetB0, MobileNetV2 or others). Explain how you used these networks and discuss the effect they had relative to your models.
 Q6: (Opcional) Discuta o impacto no treino e sobreajustamento nos dois problemas de classificação se usar redes pré-treinadas no dataset ImageNet (e.g. EfficientNetB0, MobileNetV2 or others). Explique como usou estas redes e discuta o efeito que tiveram nos seus modelos.
-R6:
+R6: For the transfer learning problem we imported the EfficientNetB0, MobileNetV2 and VGG16 networks without their classifiers. We then froze the layers so as to not have them be trained alongside our classifier. This imported network performs the feature extraction so all we needed to do was train a classifier. We did not manage to obtain proper results. We tried having a dense layer and having only a Global Average Pooling layer but we never stopped overfitting and achieved at best around 55 accuracy on the validation set. We present results only for the EfficientNetB0, although we tried different networks and with different architectures. Our Multiclass model with transfer learning:
 
+Multiclass_Transfer.png
+
+. Our Multilabel model with transfer learning:
+
+Multilabel_Transfer.png
