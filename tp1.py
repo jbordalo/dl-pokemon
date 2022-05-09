@@ -6,10 +6,10 @@ Aprendizagem Profunda, TP1
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from tensorflow.keras import metrics
 from tensorflow.keras.applications import EfficientNetB0
-from tensorflow.keras import layers, metrics
-from tensorflow.keras.layers import Input, Activation, Flatten, Dense, Conv2D, BatchNormalization, MaxPooling2D, \
-    Dropout, Conv2DTranspose, UpSampling2D, SeparableConv2D, GlobalAveragePooling2D
+from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization, MaxPooling2D, \
+    Conv2DTranspose, GlobalAveragePooling2D, Concatenate
 from tensorflow.keras.models import Model
 
 from tp1_utils import load_data, overlay_masks, compare_masks
@@ -35,58 +35,35 @@ def plot(hist, model_name):
     plt.show()
 
 
+def double_conv_block(x, n_filters):
+    x = Conv2D(n_filters, 3, padding="same", activation="relu")(x)
+    x = Conv2D(n_filters, 3, padding="same", activation="relu")(x)
+    return x
+
+
+def downsample_block(x, n_filters):
+    f = double_conv_block(x, n_filters)
+    p = MaxPooling2D(2)(f)
+    return f, p
+
+
+def upsample_block(x, conv_features, n_filters):
+    x = Conv2DTranspose(n_filters, 3, 2, padding="same")(x)
+    x = Concatenate([x, conv_features])
+    x = double_conv_block(x, n_filters)
+    return x
+
+
 def build_segmentation_model():
     inputs = Input(shape=(64, 64, 3))
 
-    # Downsampling inputs
+    features, layer = downsample_block(inputs, 32)
 
-    # Entry block
-    x = Conv2D(32, 3, strides=2, padding="same")(inputs)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
+    layer = double_conv_block(layer, 64)
 
-    previous_block_activation = x  # Set aside residual
+    layer = upsample_block(layer, features, 32)
 
-    # Blocks 1, 2, 3 are identical apart from the feature depth.
-    for filters in [64]:
-        x = Activation("relu")(x)
-        x = SeparableConv2D(filters, 3, padding="same")(x)
-        x = BatchNormalization()(x)
-
-        x = Activation("relu")(x)
-        x = SeparableConv2D(filters, 3, padding="same")(x)
-        x = BatchNormalization()(x)
-
-        x = MaxPooling2D(3, strides=2, padding="same")(x)
-
-        # Project residual
-        residual = Conv2D(filters, 1, strides=2, padding="same")(
-            previous_block_activation
-        )
-        x = layers.add([x, residual])  # Add back residual
-        previous_block_activation = x  # Set aside next residual
-
-    # Upsampling inputs
-
-    for filters in [64, 32]:
-        x = Activation("relu")(x)
-        x = Conv2DTranspose(filters, 3, padding="same")(x)
-        x = BatchNormalization()(x)
-
-        x = Activation("relu")(x)
-        x = Conv2DTranspose(filters, 3, padding="same")(x)
-        x = BatchNormalization()(x)
-
-        x = UpSampling2D(2)(x)
-
-        # Project residual
-        residual = UpSampling2D(2)(previous_block_activation)
-        residual = Conv2D(filters, 1, padding="same")(residual)
-        x = layers.add([x, residual])  # Add back residual
-        previous_block_activation = x  # Set aside next residual
-
-    # Pixelwise classification layer
-    outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(x)
+    outputs = Conv2D(1, 1, padding="same", activation="sigmoid")(layer)
 
     return Model(inputs, outputs)
 
@@ -152,7 +129,9 @@ def segmentation_model(train_x, train_masks, test_x, test_masks):
 
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=multilabel_metrics())
 
-    fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=200)
+    model.summary()
+
+    fit_evaluate(model, "Semantic Segmentation", train_x, train_masks, test_x, test_masks, batch_size=32, epochs=20)
 
     predicts = model.predict(test_x)
     overlay_masks('test_overlay.png', test_x, predicts)
@@ -177,7 +156,7 @@ def transfer_multilabel_model(train_x, train_labels, test_x, test_labels):
 
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    fit_evaluate(model, "Multilabel", train_x*255, train_labels, test_x*255, test_labels, batch_size=32, epochs=100)
+    fit_evaluate(model, "Multilabel", train_x * 255, train_labels, test_x * 255, test_labels, batch_size=32, epochs=100)
 
 
 def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
@@ -185,7 +164,8 @@ def transfer_multiclass_model(train_x, train_classes, test_x, test_classes):
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    fit_evaluate(model, "Multiclass", train_x*255, train_classes, test_x*255, test_classes, batch_size=32, epochs=100)
+    fit_evaluate(model, "Multiclass", train_x * 255, train_classes, test_x * 255, test_classes, batch_size=32,
+                 epochs=100)
 
 
 def main():
