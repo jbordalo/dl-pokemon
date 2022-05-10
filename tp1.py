@@ -49,7 +49,7 @@ def downsample_block(layer, n_filters):
 
 def upsample_block(layer, conv_features, n_filters):
     layer = Conv2DTranspose(n_filters, 3, 2, padding="same")(layer)
-    layer = Concatenate([layer, conv_features])
+    layer = Concatenate()([layer, conv_features])
     layer = double_conv_block(layer, n_filters)
     return layer
 
@@ -62,14 +62,14 @@ def build_segmentation_model(filters=None):
 
     layer = inputs
     features = []
-    for i, n_filters in enumerate(filters):
+    for n_filters in filters:
         feature, layer = downsample_block(layer, n_filters)
-        features[i] = feature
+        features.append(feature)
 
     layer = double_conv_block(layer, 2 * filters[-1])
 
-    for i, n_filters in reversed(list(enumerate(filters))):
-        layer = upsample_block(layer, features[i], n_filters)
+    for feature, n_filters in reversed(list(zip(features, filters))):
+        layer = upsample_block(layer, feature, n_filters)
 
     outputs = Conv2D(1, 1, padding="same", activation="sigmoid")(layer)
 
